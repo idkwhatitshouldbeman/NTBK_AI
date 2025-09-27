@@ -31,14 +31,19 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Change this in production
 
-# Configure CORS
-CORS(app, origins=[
-    "https://notebooker.netlify.app",
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://127.0.0.1:8080",
-    "http://127.0.0.1:3000"
-])
+# Configure CORS - More permissive for immediate testing
+CORS(app, 
+     origins=[
+         "https://notebooker.netlify.app",
+         "http://localhost:8080",
+         "http://localhost:3000",
+         "http://127.0.0.1:8080",
+         "http://127.0.0.1:3000",
+         "https://*.netlify.app"  # Allow all Netlify subdomains
+     ],
+     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 # API Key for authentication
 API_KEY = os.environ.get('API_KEY', 'notebooker-api-key-2024')
@@ -55,6 +60,13 @@ app.jinja_env.auto_reload = True
 def add_header(response):
     if 'no-cache' not in request.headers.get('Cache-Control', ''):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    
+    # Additional CORS headers for immediate fix
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key, Authorization'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     return response
 
 # Initialize livereload for development
@@ -225,6 +237,11 @@ def logout():
     except Exception as e:
         logger.error(f"Logout error: {e}")
         return jsonify({'success': False, 'error': 'Logout failed'})
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "healthy", "service": "NTBK_AI Flask API", "timestamp": datetime.now().isoformat()}, 200
 
 @app.route('/')
 def index():
